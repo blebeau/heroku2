@@ -25,13 +25,23 @@ package herokusample;
 
 import java.net.URISyntaxException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import static javax.ws.rs.HttpMethod.PUT;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 
 /**
  *
@@ -41,21 +51,68 @@ import javax.ws.rs.Path;
 public class DBSampleREST {
 
     @GET
-    public String getAll() {
-        try {
-            Connection conn = DBUtils.getConnection();
+    @Produces("application/json")
+    public List<Thing> getAll() throws URISyntaxException, SQLException{
+        List<Thing> things = new ArrayList<Thing>();
+        Connection conn = DBUtils.getConnection();
             String result = "";
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("SELECT * FROM sample");
             while (rs.next()) {
-                result += rs.getString("id") + ": " + rs.getString("name") + "\n";
-            }
-            return result;
-        } catch (URISyntaxException ex) {
-            Logger.getLogger(DBSampleREST.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (SQLException ex) {
-            Logger.getLogger(DBSampleREST.class.getName()).log(Level.SEVERE, null, ex);
+                Thing t = new Thing();
+                t.setId(rs.getInt("id"));
+                t.setName(rs.getString("name"));
+                things.add(t);
+           }
+            return things;
         }
-        return "";
+    @GET
+    @Path("[id]")
+    @Produces("application/json")
+    public List<Thing> getOne(@PathParam("id") int id) throws URISyntaxException, SQLException{
+        List<Thing> things = new ArrayList<Thing>();
+            Connection conn = DBUtils.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM sample WHERE id = ?");
+            pstmt.setInt(1, id);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Thing t = new Thing();
+                t.setId(rs.getInt("id"));
+                t.setName(rs.getString("name"));
+                things.add(t);
+           }
+        return things;
+    }
+    
+    @POST
+    @Path("[id]")
+    @Consumes("application/json")
+    public void addOne(@PathParam("id") int id, Thing thing) throws URISyntaxException, SQLException{
+        Connection conn = DBUtils.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement("UPDATE sample SET id = ?, name = ? WHERE id = ?");
+            pstmt.setInt(1, thing.getId());
+            pstmt.setString(2, thing.getName());
+            pstmt.setInt(3, id);
+            pstmt.executeUpdate();
+    }
+    
+    @PUT
+    @Path("[id]")
+    @Consumes("application/json")
+    public void editOne(@PathParam("id") int id, Thing thing) throws URISyntaxException, SQLException{
+        Connection conn = DBUtils.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement("INSERT INTO sample (id, name) VALUES (?, ?)");
+            pstmt.setInt(1, thing.getId());
+            pstmt.setString(2, thing.getName());
+            pstmt.executeUpdate();
+    }
+    
+    @DELETE
+    @Path("[id]")
+    public void deleteOne(@PathParam("id") int id) throws URISyntaxException, SQLException{
+        Connection conn = DBUtils.getConnection();
+        PreparedStatement pstmt = conn.prepareStatement("DELETE FROM sample WHERE id = ?");
+        pstmt.setInt(1, id);
+        pstmt.executeUpdate();
     }
 }
